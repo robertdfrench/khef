@@ -1,1 +1,1 @@
-../khef
+../khef.py

@@ -24,10 +24,10 @@ test: lint typecheck .venv/bin/pytest .venv/bin/coverage  #: Run tests
 	$(venv) pytest --cov=tests.khef --cov-fail-under=100
 
 lint: .venv/bin/flake8 #: Check code for PEP8 compliance
-	$(venv) flake8 khef
+	$(venv) flake8 khef.py
 
 typecheck: .venv/bin/mypy #: Check for static type errors
-	$(venv) mypy khef
+	$(venv) mypy khef.py
 
 clean: #: Remove any development / testing rubble
 	rm -rf \
