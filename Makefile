@@ -20,14 +20,27 @@ coverage: .venv/bin/coverage #: Visualize uncovered code
 	$(venv) coverage html
 	open htmlcov/index.html
 
-test: lint typecheck .venv/bin/pytest .venv/bin/coverage  #: Run tests
-	$(venv) pytest --cov=tests.khef --cov-fail-under=100
+test: build/lint build/typecheck .venv/bin/pytest .venv/bin/coverage  #: Run tests
+	$(venv) pytest tests/interior tests/perimeter --cov=tests.khef --cov-fail-under=100
+	$(venv) pytest tests/exterior --cov=tests.khef
 
 lint: .venv/bin/flake8 #: Check code for PEP8 compliance
 	$(venv) flake8 khef.py
 
 typecheck: .venv/bin/mypy #: Check for static type errors
 	$(venv) mypy khef.py
+
+build/typecheck: build/.dir khef.py
+	$(MAKE) typecheck
+	touch $@
+
+build/lint: build/.dir khef.py
+	$(MAKE) lint
+	touch $@
+
+build/.dir:
+	mkdir -p build
+	touch $@
 
 clean: #: Remove any development / testing rubble
 	rm -rf \
