@@ -37,6 +37,22 @@ import textwrap
 import typing
 
 
+# The man in black fled across the desert, and the gunslinger followed.
+#
+# This is where our journey begins. In fact, because this is Python, it already
+# began in a footnote at the bottom of this file: a little hook to tell the
+# interpreter to call this function when khef is being used as a program, but
+# to do nothing when khef is being imported as a library (i.e.  when it is
+# undergoing tests).
+#
+# The `argv` at the top is just a list of strings, the arguments provided to
+# khef by its parent process -- probably your shell. A caveat here that may
+# seem unusual for some: this list includes *only* the arguments, and does not
+# (as is the case in most other places) begin with the program name.
+def main(argv: typing.List[str]) -> None:
+    print(" ".join(argv))
+
+
 def hello():
     return "world"
 
@@ -281,22 +297,6 @@ class Exec:
     def __del__(self):
         if self.pending:
             return self._run()
-
-
-# The man in black fled across the desert, and the gunslinger followed.
-#
-# This is where our journey begins. In fact, because this is Python, it already
-# began in a footnote at the bottom of this file: a little hook to tell the
-# interpreter to call this function when khef is being used as a program, but
-# to do nothing when khef is being imported as a library (i.e.  when it is
-# undergoing tests).
-#
-# The `argv` at the top is just a list of strings, the arguments provided to
-# khef by its parent process -- probably your shell. A caveat here that may
-# seem unusual for some: this list includes *only* the arguments, and does not
-# (as is the case in most other places) begin with the program name.
-def main(argv: typing.List[str]) -> None:
-    print(" ".join(argv))
 
 
 # Invoke the `main` function (top of this file) with all of the arguments given
