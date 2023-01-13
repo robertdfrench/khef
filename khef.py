@@ -28,13 +28,152 @@
 # ask you to read the code wearing only one of these hats at a time.
 #
 # We hope you enjoy the program.
+import abc
+import argparse
+import functools
 import subprocess
 import sys
+import textwrap
 import typing
 
 
 def hello():
     return "world"
+
+
+# This is the class of objects which represent 'subcommands': actions that can
+# be invoked form the command line interface, such as `khef init` and `khef
+# share`. This class is sortof peculiar, in that it is used primarily as a
+# function decorator. This makes it easy to define subcommands (do check out
+# the "init" function below), but it requires some subtleties that may not be
+# obvious to the casual Python programmer.
+#
+# The goal is to make it as easy as possible to create new subcommands and
+# define their arguments. Python's builtin argparse module is good, but a bit
+# awkward. Our Subcommand class makes it a bit easier to enjoy the handful of
+# features that we really need for khef.
+class Subcommand():
+    instances: typing.Dict[str, typing.Any] = {}
+
+    # Define a new subcommand basd on `f`. The subcommand name will follow the
+    # global name of the function `f`, but with underscores replaced by dashes.
+    # For example, consider the following definition:
+    #
+    # 	@Subcommand
+    # 	def long_days_pleasant_nights(the_number: int):
+    # 	    print(the_number * 2)
+    #
+    # This will produce the following subcommand:
+    #
+    # 	$ khef long-days-pleasant-nights 19
+    #
+    # Where '19' is the number of long days which we would like to wish upon
+    # someone.
+    #
+    # Each subcommand is stored (in the `Subcommand` class object itself)
+    # according to its underlying function name.
+    def __init__(self, f: typing.Callable):
+        self.f = f
+        functools.wraps(f)(self)
+        Subcommand.instances[f.__name__] = self
+
+    # This function determines the names of the arguments expected by the
+    # subcommand definition (that is, the function definition decorated by the
+    # Subcommand class).
+    def argument_names(self) -> typing.List[str]:
+        keys = self.f.__annotations__.keys()
+        return [k for k in keys if k != 'return']
+
+    # This is a syntactic-sugar kind of command, which just makes it easier to
+    # access the annotations (the argument names and their types) of the
+    # function `f`.
+    def annotations(self) -> typing.Dict[str, type]:
+        return self.f.__annotations__
+
+    # Convert the provided `args` into a list of Python objects which can be
+    # used as arguments for the underlying function `self.f`.
+    def argv(self, args: argparse.Namespace) -> typing.List[typing.Any]:
+        names = self.argument_names()
+        values = vars(args)
+        return [values[n] for n in names]
+
+    # Invokes the underlying function `self.f` with the unpacked command-line
+    # arguments. This is the function that is actually invoked by the argparse
+    # framework in the following Subcommand.dispatch mehod.
+    def __call__(self, args: argparse.Namespace) -> None:
+        arguments = self.argv(args)
+        self.f(*arguments)
+
+    # This function expects to be called with the contents of sys.argv,
+    # omitting the application name. Its job is to parse those arguments, and
+    # invoke an appropriate subroutine to handle them. This is designed
+    # entirely around Python3's built-in argparse module, so refer to its
+    # documentation for details.
+    @classmethod
+    def dispatch(self, argv: typing.List[str], prog: str = "",
+                 version: str = "", description: str = ""):
+        usage = f"{prog} [options]"
+        epilog = """For more information on any subcommand, simply run `khef
+        <subcommand> -h`"""
+        parser = argparse.ArgumentParser(prog=prog, description=description,
+                                         usage=usage, epilog=epilog)
+        parser.add_argument('--version', action='version', version=version)
+        # By default, we want to print the parser-level help message. That is,
+        # if the user invokes 'khef' without providing any subcommand argument,
+        # we want argparse to present a list of all the subcommands and their
+        # high-level description.
+        parser.set_defaults(f=lambda x: parser.print_help())
+        subparsers = parser.add_subparsers(title='subcommands',
+                                           metavar='(many other functions)')
+
+        # For each function that has been decorated with @Subcommand, take its
+        # name and replace all the underscores with hyphens:
+        epilog_formatter = argparse.RawDescriptionHelpFormatter
+        for name, func in self.instances.items():
+            hyphenated_name = name.replace('_', '-')
+            docstring = func.__doc__.splitlines()
+            help_text = docstring[0]
+            desc_text = "\n".join(docstring[1:])
+            sp = subparsers.add_parser(hyphenated_name, help=help_text,
+                                       formatter_class=epilog_formatter,
+                                       epilog=textwrap.dedent(desc_text))
+            # For each annotated variable of this function (each function
+            # argument) add a *required* argument to the subcommand's subparser
+            # -- subcommand arguments must be of a type that can double as a
+            # string constructor. That is to say, they must expect a string as
+            # the one and only constructor input. Like int or PosixPath or
+            # something.
+            #
+            # However, since the help message for this argument will be derived
+            # from the pydoc of the class of the type of this argument, it is
+            # better to create a custom subclass for each argument, so that you
+            # can describe its usage with a docstring:
+            #
+            # class GithubUsername(str):
+            #     """Your username on github.com""""
+            #     pass
+            for name, cls in func.annotations().items():
+                sp.add_argument(name, type=cls, help=cls.__doc__)
+            sp.set_defaults(f=func)
+
+        # Parse the provided arguments into Python objects, and pass them as
+        # arguments to the underlying function for the selected (by the user)
+        # subcommand object. In other words, if the user types:
+        #
+        # $ khef long-days-pleasant-nights 19
+        #
+        # We would then invoke the function `long_days_pleasant_nights` with
+        # the sole argument (int("19")).
+        args = parser.parse_args(argv)
+        args.f(args)
+
+
+# This is the class of all Subcommand Arguments. This class doesn't do anything
+# on its own, it just makes it easier to identify classes that are used to
+# represent command-line arguments for Subcommands.  Effectively, these class
+# exists just to provide the help documentation for Subcommand objects
+class Argument(str, abc.ABC):
+    pass
 
 
 # This class provides a way to execute UNIX subprocesses with the same ease of
