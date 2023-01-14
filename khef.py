@@ -319,14 +319,14 @@ def x_git_version():
     """This plumbing command returns the version of git on this host. It is
     used exclusively to text how Exec objects behave when they are destroyed
     without being used explicitly."""
-    Exec("git", "--version")
+    Exec("/usr/bin/git", "--version")
 
 
 @Subcommand
 def x_openssl_version():
     """This plumbing command returns the version of OpenSSL on this host. It is
     used exclusively to test how Exec objects convert to strings"""
-    print(Exec("openssl", "version"))
+    print(Exec("/usr/bin/openssl", "version"))
 
 
 @Subcommand
@@ -373,7 +373,7 @@ def x_decrypt_symmetric(
 def x_list_ciphers():
     """This plumbing command lists all the available OpenSSL ciphers on this
     system. Its only use is to test how Exec objects behave as iterables. """
-    for cipher in Exec("openssl", "list-cipher-algorithms"):
+    for cipher in Exec("/usr/bin/openssl", "list-cipher-algorithms"):
         print(cipher)
 
 
