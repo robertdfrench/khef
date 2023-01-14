@@ -1,8 +1,14 @@
-# khef development kit
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+
+# Khef Dev Environment
 # ====================
 #
 # "Public" entrypoints can be listed by running `make` or `make help` from
 # within this directory.
+
 
 # This macro is shorthand for "Run the following command in the context of the
 # python virtual environment located in the `.venv` directory"
