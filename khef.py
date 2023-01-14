@@ -53,10 +53,6 @@ def main(argv: typing.List[str]) -> None:
     print(" ".join(argv))
 
 
-def hello():
-    return "world"
-
-
 # This is the class of objects which represent 'subcommands': actions that can
 # be invoked form the command line interface, such as `khef init` and `khef
 # share`. This class is sortof peculiar, in that it is used primarily as a
