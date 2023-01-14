@@ -27,6 +27,7 @@ clean: #: Remove any development / testing rubble
 		tests/__pycache__ \
 		htmlcov \
 		build \
+		*.txt \
 		.venv
 
 coverage: .venv/bin/coverage #: Visualize uncovered code

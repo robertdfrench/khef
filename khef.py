@@ -31,6 +31,7 @@
 import abc
 import argparse
 import functools
+import os
 import subprocess
 import sys
 import textwrap
@@ -50,7 +51,8 @@ import typing
 # seem unusual for some: this list includes *only* the arguments, and does not
 # (as is the case in most other places) begin with the program name.
 def main(argv: typing.List[str]) -> None:
-    print(" ".join(argv))
+    Subcommand.dispatch(argv, prog='khef', version='0.1.0',
+                        description='Share secrets with your Ka-tet')
 
 
 # This is the class of objects which represent 'subcommands': actions that can
@@ -257,7 +259,7 @@ class Exec:
     @property
     def stdout(self):
         if not self.pending:
-            raise Exec.Expired()
+            raise Exec.Expired()  # pragma: no cover
         try:
             return self._run(capture_output=True).stdout
         finally:
@@ -293,6 +295,86 @@ class Exec:
     def __del__(self):
         if self.pending:
             return self._run()
+
+
+# This is the passcode given to some automata in Mid-World. In this case, like
+# in the case of Nort, it causes the khef utility to spill its guts.
+class PlaintextFile(Argument):
+    """A (sensitive) file which contains human-readable text"""
+    pass
+
+
+class RawPassword(Argument):
+    """A(n unsafe) password, which may be visible to others on this system"""
+    pass
+
+
+class CiphertextFile(Argument):
+    """An encrypted file"""
+    pass
+
+
+@Subcommand
+def x_git_version():
+    """This plumbing command returns the version of git on this host. It is
+    used exclusively to text how Exec objects behave when they are destroyed
+    without being used explicitly."""
+    Exec("git", "--version")
+
+
+@Subcommand
+def x_openssl_version():
+    """This plumbing command returns the version of OpenSSL on this host. It is
+    used exclusively to test how Exec objects convert to strings"""
+    print(Exec("openssl", "version"))
+
+
+@Subcommand
+def x_encrypt_symmetric(
+        plaintext_file: PlaintextFile,
+        password: RawPassword,
+        ciphertext_file: CiphertextFile):
+    """This plumbing command allows you to encrypt a plaintext file on disk
+    using a password provided on the command line. It is unsafe, and should not
+    be used. Its only use is to test how Exec objects are created with file
+    descriptors and input text."""
+    with open(plaintext_file, "r") as p:
+        (r, w) = os.pipe()
+        os.set_blocking(r, False)
+        os.write(w, bytes(password, 'utf-8'))
+        ciphertext = Exec(
+                '/usr/bin/openssl', 'enc', '-A', '-chacha',
+                '-base64', '-pass', f"fd:{r}", input=p.read(), pass_fds=(r,))
+        with open(ciphertext_file, "w") as c:
+            c.write(ciphertext.stdout.rstrip())
+
+
+@Subcommand
+def x_decrypt_symmetric(
+        ciphertext_file: CiphertextFile,
+        password: RawPassword,
+        plaintext_file: PlaintextFile):
+    """This plumbing command allows you to decrypt a ciphertext file on disk
+    using a password provided on the command line. It is unsafe, and should not
+    be used. Its only use is to test how Exec objects are created with file
+    descriptors and input text."""
+    with open(ciphertext_file, "r") as c:
+        (r, w) = os.pipe()
+        os.set_blocking(r, False)
+        os.write(w, bytes(password, 'utf-8'))
+        plaintext = Exec(
+                '/usr/bin/openssl', 'enc', '-d', '-A', '-chacha',
+                '-base64', '-pass', f"fd:{r}", input=c.read(), pass_fds=(r,))
+        with open(plaintext_file, "w") as p:
+            p.write(plaintext.stdout.rstrip())
+
+
+@Subcommand
+def x_list_ciphers():
+    """This plumbing command lists all the available OpenSSL ciphers on this
+    system. Its only use is to test how Exec objects behave as iterables. """
+    for cipher in Exec("openssl", "list-cipher-algorithms"):
+        print(cipher)
 
 
 # Invoke the `main` function (top of this file) with all of the arguments given
