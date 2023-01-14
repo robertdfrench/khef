@@ -118,6 +118,15 @@ class Subcommand:
         arguments = self.argv(args)
         self.f(*arguments)
 
+    # This function extracts the help and description text from the docstring
+    # of a Subcommand-decorated function.
+    @staticmethod
+    def parse_doc(doc: str) -> typing.Tuple[str, str]:
+        lines = doc.splitlines()
+        help_text = lines[0]
+        desc_text = "\n".join(lines[1:])
+        return (help_text, desc_text)
+
     # This function expects to be called with the contents of sys.argv,
     # omitting the application name. Its job is to parse those arguments, and
     # invoke an appropriate subroutine to handle them. This is designed
@@ -145,12 +154,13 @@ class Subcommand:
         epilog_formatter = argparse.RawDescriptionHelpFormatter
         for name, func in self.instances.items():
             hyphenated_name = name.replace('_', '-')
-            docstring = func.__doc__.splitlines()
-            help_text = docstring[0]
-            desc_text = "\n".join(docstring[1:])
-            sp = subparsers.add_parser(hyphenated_name, help=help_text,
-                                       formatter_class=epilog_formatter,
-                                       epilog=textwrap.dedent(desc_text))
+            (help_text, desc_text) = Subcommand.parse_doc(func.__doc__)
+            sp = subparsers.add_parser(
+                hyphenated_name,
+                help=help_text,
+                formatter_class=epilog_formatter,
+                epilog=textwrap.dedent(desc_text)
+            )
             # For each annotated variable of this function (each function
             # argument) add a *required* argument to the subcommand's subparser
             # -- subcommand arguments must be of a type that can double as a
@@ -352,6 +362,7 @@ class OpenSSL:
         return plaintext.stdout.rstrip()
 
 
+# TODO: Wrap this in print() once we have something else that uses this
 @Subcommand
 def x_git_version():
     """This plumbing command returns the version of git on this host. It is

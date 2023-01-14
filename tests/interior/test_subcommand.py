@@ -3,6 +3,12 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from .. import khef
 
+def test_parse_docstring():
+    docstring = "Help Text\nDesc Line 1\nDesc Line 2"
+    (help_text, desc_text) = khef.Subcommand.parse_doc(docstring)
+    assert help_text == "Help Text"
+    assert desc_text == "Desc Line 1\nDesc Line 2"
+
 def test_subcommand_registration():
     @khef.Subcommand
     def long_days_pleasant_nights():
