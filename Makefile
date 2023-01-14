@@ -10,37 +10,9 @@ venv=. .venv/bin/activate &&
 
 
 # Public Targets
-# ==============
+# --------------
 
-help: #: Print this help menu
-	@awk -F': ' '/#:/ && !/awk/ { print $$1,":",$$3 }' $(MAKEFILE_LIST) \
-		| column -s ':' -t
-
-coverage: .venv/bin/coverage #: Visualize uncovered code
-	$(venv) coverage html
-	open htmlcov/index.html
-
-test: build/lint build/typecheck .venv/bin/pytest .venv/bin/coverage  #: Run tests
-	$(venv) pytest tests/interior tests/perimeter --cov=tests.khef --cov-fail-under=100
-	$(venv) pytest tests/exterior --cov=tests.khef
-
-lint: .venv/bin/flake8 #: Check code for PEP8 compliance
-	$(venv) flake8 khef.py
-
-typecheck: .venv/bin/mypy #: Check for static type errors
-	$(venv) mypy khef.py
-
-build/typecheck: build/.dir khef.py
-	$(MAKE) typecheck
-	touch $@
-
-build/lint: build/.dir khef.py
-	$(MAKE) lint
-	touch $@
-
-build/.dir:
-	mkdir -p build
-	touch $@
+all: help
 
 clean: #: Remove any development / testing rubble
 	rm -rf \
@@ -52,6 +24,66 @@ clean: #: Remove any development / testing rubble
 		htmlcov \
 		build \
 		.venv
+
+coverage: .venv/bin/coverage #: Visualize uncovered code
+	$(venv) coverage html
+	open htmlcov/index.html
+
+help: #: Print this help menu
+	@echo "USAGE\n"
+	@awk -F': ' '/#:/ && !/awk/ { print $$1,":",$$3 }' $(MAKEFILE_LIST) \
+		| column -s ':' -t
+
+install: /usr/local/share/man/man1/khef.1 /usr/local/bin/khef #: Install khef on this host
+
+lint: .venv/bin/flake8 #: Check code for PEP8 compliance (even if nothing has changed)
+	$(venv) flake8 khef.py
+
+test: build/lint build/typecheck .venv/bin/pytest .venv/bin/coverage  #: Run tests (+ lint + typecheck)
+	$(venv) pytest tests/interior tests/perimeter --cov=tests.khef
+	$(venv) pytest tests/exterior --cov=tests.khef --cov-fail-under=100
+
+typecheck: .venv/bin/mypy #: Check for static type errors (even if nothing has changed)
+	$(venv) mypy khef.py
+
+
+# Local Build Targets
+# -------------------
+
+# Use this to avoid re-typechecking khef every time we test. The typechecking
+# will only be performed again if khef has changed since the last successful
+# typecheck.
+build/typecheck: build/.dir khef.py
+	$(MAKE) typecheck
+	touch $@
+
+# Use this to avoid re-linting khef.py every time we want to test. Instead, khef
+# will only be re-linted if it has changed since the last successful linting.
+build/lint: build/.dir khef.py
+	$(MAKE) lint
+	touch $@
+
+# Create an empty "build/" directory, but use an empty file as a flag so that we
+# do not attempt to recreate it in the future -- directories are not good
+# targets for Make because they appear to be "modified" whenever a file inside
+# them is modified, so we want to rely on an empty file as a proxy for the
+# existence of this directory.
+build/.dir:
+	mkdir -p build
+	touch $@
+
+
+# Global Install Targets
+# ----------------------
+/usr/local/share/man/man1/khef.1: khef.1
+	sudo install -o root -g wheel -m 0644 $< $@
+
+/usr/local/bin/khef: khef.py
+	sudo install -o root -g wheel -m 0755 $< $@
+
+
+# Virtual Environment Targets
+# ---------------------------
 
 # Install the latest version of 'pytest', which we use in place of the built-in
 # test runner.
@@ -80,7 +112,6 @@ clean: #: Remove any development / testing rubble
 # handled, and our code does not meet those expectations yet.
 #
 # * https://mypy-lang.blogspot.com/2022/11/mypy-0990-released.html
-# * https://github.com/robertdfrench/knoxbsd.org/issues/34
 .venv/bin/mypy: .venv/init
 	$(venv) pip install mypy==0.991
 
