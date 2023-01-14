@@ -14,6 +14,10 @@ venv=. .venv/bin/activate &&
 
 all: help
 
+check_install: #: Validate an installation of khef
+	which khef
+	man -w khef
+
 clean: #: Remove any development / testing rubble
 	rm -rf \
 		.coverage \
@@ -45,6 +49,11 @@ test: build/lint build/typecheck .venv/bin/pytest .venv/bin/coverage  #: Run tes
 
 typecheck: .venv/bin/mypy #: Check for static type errors (even if nothing has changed)
 	$(venv) mypy khef.py
+
+uninstall: #: Remove khef from this host
+	sudo rm -f \
+		/usr/local/share/man/man1/khef.1 \
+		/usr/local/bin/khef
 
 
 # Local Build Targets
