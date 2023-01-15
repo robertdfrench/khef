@@ -201,28 +201,65 @@ class Argument(str, abc.ABC):
     pass
 
 
+# Keychain Records
+# ----------------
+#
+# These classes support interacting with the system keychain through,
+# curiously, git's `credential` subcommand (see git-credential(1) for more
+# information). In text format, a request to retrieve a keychain item looks
+# like this:
+#
+#   protocol=https
+#   host=example.com
+#   username=will.dearborn
+#
+# Both the respose to such a request AND a command to *set* a keychain record
+# will look like this:
+#
+#   protocol=https
+#   host=example.com
+#   username=will.dearborn
+#   password=nineteen
+#
+# These classes are able to parse, store, and produce records of this format.
 @dataclasses.dataclass
 class AbstractKeychainRecord(abc.ABC):
     host: str
     username: str
 
+    # Serialize the current record into the format described above. Note the
+    # use of `dataclasses.asdict` from the python stdlib -- that produces a
+    # dictionary representation of all and only the named fields of this and
+    # any child class. The upshot is that we get a password field only when the
+    # KeychainRecord class is involved, and we don't get a password field when
+    # the KeychainRequest class is used.
     def __str__(self):
         d = dataclasses.asdict(self)
         return "protocol=https\n" + \
                "\n".join([f"{k}={v}" for (k, v) in d.items()])
 
 
+# Same as above, but include a 'password' field which will contain either the
+# value of the password as currently stored in the system keychain (for
+# reading) or the value of the password as it *should* be stored in the system
+# keychain (for writing).
 @dataclasses.dataclass
 class KeychainRecord(AbstractKeychainRecord):
     password: str
 
     @staticmethod
     def parse(raw: str) -> "KeychainRecord":
+        # One dictionary entry per line, so split
         lines = raw.splitlines()
+        # splitting 'k=v' on the '=' produces a collection of [k, v] arrays
         d = {p[0]: p[1] for p in [line.split('=') for line in lines]}
         return KeychainRecord(d['host'], d['username'], d['password'])
 
 
+# The KeychainRequest class is for requesting keychain records from the system
+# keychain database, and does not need any capabilities beyond what's present
+# in the AbstractKeychainRecord class -- we differentiate only for the sake of
+# having meaningful data types.
 @dataclasses.dataclass
 class KeychainRequest(AbstractKeychainRecord):
     pass
@@ -349,15 +386,29 @@ class Git:
     def print_version():
         Exec("/usr/bin/git", "--version")
 
+    # Write a KeychainRecord object into the system keychain, or replace an
+    # existing one.
     @staticmethod
     def credential_approve(cred: KeychainRecord):
         Exec('/usr/bin/git', 'credential', 'approve', input=str(cred))
 
+    # Retrieve a KeychainRecord object from the system keychain, if it exists.
+    # Be advised that if such an object does not exist in the system keychain,
+    # macOS will interactively prompt the user to supply the password --
+    # Apple's understanding of this use case is slightly different than Git's
+    # understanding of it, but since we are using `git-credential(1)` rather
+    # than Apple's (much flakier) `security(1)`, we are stuck with this edge
+    # case.
     @staticmethod
     def credential_fill(request: KeychainRequest) -> KeychainRecord:
         output = Exec('/usr/bin/git', 'credential', 'fill', input=str(request))
         return KeychainRecord.parse(output.stdout)
 
+    # Remove the item specified in the KeychainRequest from the system
+    # keychain. The macOS system keychain is not version-controlled, so even if
+    # you use iCloud to sync your keychain contents, deleting it from one host
+    # will cause it to be deleted from all others as soon as they talk to
+    # iCloud.
     @staticmethod
     def credential_reject(request: KeychainRequest):
         Exec('/usr/bin/git', 'credential', 'reject', input=str(request))

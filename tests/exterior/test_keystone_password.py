@@ -5,6 +5,9 @@ from .. import khef
 import uuid
 
 
+# Show how a user could (though they should not) manually interact with the
+# keystone password. This commands may be removed as the app stabilizes, or
+# they may require the use of a '--debug' flag or similar.
 def test_x_keystone_create(capsys):
     keystone_password = str(uuid.uuid4())
     khef.main(["x-keystone-delete", "khef.invalid", "exterior-test"])
