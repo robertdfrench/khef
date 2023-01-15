@@ -414,6 +414,21 @@ class Git:
         Exec('/usr/bin/git', 'credential', 'reject', input=str(request))
 
 
+# This wraps Apple's security(1) utility
+class Security:
+    @staticmethod
+    def exists(request: KeychainRequest) -> bool:
+        try:
+            str(Exec(
+                '/usr/bin/security', 'find-internet-password',
+                '-a', request.username,
+                '-s', request.host
+            ))
+            return True
+        except Exec.Failed:
+            return False
+
+
 # This is our wrapper for the OpenSSL utility
 class OpenSSL:
 
@@ -577,6 +592,19 @@ def x_keystone_delete(host: Host, username: Username):
             username=username
         )
     )
+
+
+@Subcommand
+def x_keystone_exists(host: Host, username: Username):
+    """Delete your keystone password.
+
+    This is unsafe. It will permanently lock you out of khef."""
+    print(Security.exists(
+        KeychainRequest(
+            host=host,
+            username=username
+        )
+    ))
 
 
 # Invoke the `main` function (top of this file) with all of the arguments given
