@@ -30,6 +30,7 @@
 # We hope you enjoy the program.
 import abc
 import argparse
+import dataclasses
 import functools
 import os
 import subprocess
@@ -200,6 +201,33 @@ class Argument(str, abc.ABC):
     pass
 
 
+@dataclasses.dataclass
+class AbstractKeychainRecord(abc.ABC):
+    host: str
+    username: str
+
+    def __str__(self):
+        d = dataclasses.asdict(self)
+        return "protocol=https\n" + \
+               "\n".join([f"{k}={v}" for (k, v) in d.items()])
+
+
+@dataclasses.dataclass
+class KeychainRecord(AbstractKeychainRecord):
+    password: str
+
+    @staticmethod
+    def parse(raw: str) -> "KeychainRecord":
+        lines = raw.splitlines()
+        d = {p[0]: p[1] for p in [line.split('=') for line in lines]}
+        return KeychainRecord(d['host'], d['username'], d['password'])
+
+
+@dataclasses.dataclass
+class KeychainRequest(AbstractKeychainRecord):
+    pass
+
+
 # This class provides a way to execute UNIX subprocesses with the same ease of
 # use as is provided by the POSIX shell backtick (`) feature. The goal is to
 # make sure that
@@ -321,6 +349,19 @@ class Git:
     def print_version():
         Exec("/usr/bin/git", "--version")
 
+    @staticmethod
+    def credential_approve(cred: KeychainRecord):
+        Exec('/usr/bin/git', 'credential', 'approve', input=str(cred))
+
+    @staticmethod
+    def credential_fill(request: KeychainRequest) -> KeychainRecord:
+        output = Exec('/usr/bin/git', 'credential', 'fill', input=str(request))
+        return KeychainRecord.parse(output.stdout)
+
+    @staticmethod
+    def credential_reject(request: KeychainRequest):
+        Exec('/usr/bin/git', 'credential', 'reject', input=str(request))
+
 
 # This is our wrapper for the OpenSSL utility
 class OpenSSL:
@@ -432,6 +473,59 @@ def x_list_ciphers():
     Its only use is to test how Exec objects behave as iterables. """
     for cipher in Exec("/usr/bin/openssl", "list-cipher-algorithms"):
         print(cipher)
+
+
+class Host(Argument):
+    """DNS record applicable to the password"""
+    pass
+
+
+class Username(Argument):
+    """Username associatd with the account"""
+    pass
+
+
+@Subcommand
+def x_keystone_create(host: Host, username: Username, password: RawPassword):
+    """Manually set your keystone password.
+
+    This is unsafe. The keystone password should only ever be generated for you
+    by khef. There is no reason to know its contents."""
+    Git.credential_approve(
+        KeychainRecord(
+            host=host,
+            username=username,
+            password=password
+        )
+    )
+
+
+@Subcommand
+def x_keystone_read(host: Host, username: Username):
+    """Print your keystone password.
+
+    This is unsafe. The keystone password should only ever be handled by khef.
+    There is no reason to know its contents."""
+    record = Git.credential_fill(
+        KeychainRequest(
+            host=host,
+            username=username
+        )
+    )
+    print(record.password)
+
+
+@Subcommand
+def x_keystone_delete(host: Host, username: Username):
+    """Delete your keystone password.
+
+    This is unsafe. It will permanently lock you out of khef."""
+    Git.credential_reject(
+        KeychainRequest(
+            host=host,
+            username=username
+        )
+    )
 
 
 # Invoke the `main` function (top of this file) with all of the arguments given
