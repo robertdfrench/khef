@@ -92,6 +92,9 @@ class Subcommand:
         functools.wraps(f)(self)
         Subcommand.instances[f.__name__] = self
 
+    def __repr__(self) -> str:  # pragma: no cover
+        return self.f.__name__
+
     # This function determines the names of the arguments expected by the
     # subcommand definition (that is, the function definition decorated by the
     # Subcommand class).
@@ -320,6 +323,9 @@ class Exec:
     # [1]: https://docs.python.org/3.7/library/subprocess.html
     def _run(self, **kwargs):
         kwargs['check'] = True
+        if 'capture_status' in kwargs:
+            kwargs['check'] = False
+            del kwargs['capture_status']
         if self.input:
             kwargs['input'] = self.input
             if type(self.input) == str:
@@ -337,6 +343,15 @@ class Exec:
             raise Exec.Expired()  # pragma: no cover
         try:
             return self._run(capture_output=True).stdout
+        finally:
+            self.pending = False
+
+    @property
+    def returncode(self):
+        if not self.pending:
+            raise Exec.Expired()  # pragma: no cover
+        try:
+            return self._run(capture_status=True).returncode
         finally:
             self.pending = False
 
@@ -418,15 +433,12 @@ class Git:
 class Security:
     @staticmethod
     def exists(request: KeychainRequest) -> bool:
-        try:
-            str(Exec(
-                '/usr/bin/security', 'find-internet-password',
-                '-a', request.username,
-                '-s', request.host
-            ))
-            return True
-        except Exec.Failed:
-            return False
+        rc = Exec(
+            '/usr/bin/security', 'find-internet-password',
+            '-a', request.username,
+            '-s', request.host
+        ).returncode
+        return rc == 0
 
 
 # This is our wrapper for the OpenSSL utility
@@ -472,16 +484,15 @@ class OpenSSL:
 # TODO: Wrap this in print() once we have something else that uses this
 @Subcommand
 def x_git_version():
-    """This plumbing command returns the version of git on this host. It is
-    used exclusively to text how Exec objects behave when they are destroyed
-    without being used explicitly."""
+    """Print the version of git on this host."""
     Git.print_version()
 
 
+# TODO: Remove this when we have real functionality that converts Exec objects
+# into strings.
 @Subcommand
 def x_openssl_version():
-    """This plumbing command returns the version of OpenSSL on this host. It is
-    used exclusively to test how Exec objects convert to strings"""
+    """Print the version of OpenSSL on this host."""
     print(OpenSSL.version())
 
 
