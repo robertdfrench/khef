@@ -21,11 +21,3 @@ The
 .Nm
 utility is a stand-alone, easy-to-audit password management solution for small
 teams.
-.
-.
-.Sh BUGS
-Attempting to read a macOS system keychain item before it has been set will
-result in a confusing interactive prompt. This should not occur when using
-normal
-.Nm
-subcommands, but may occur when using the debug ('x'-prefixed) commands.
