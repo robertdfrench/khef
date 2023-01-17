@@ -346,6 +346,9 @@ class Exec:
         finally:
             self.pending = False
 
+    # Execute the subcommand and return its return code. If the subcommand has
+    # already been executed (like, if this function has already been called),
+    # that's an error, so raise an exception.
     @property
     def returncode(self):
         if not self.pending:
@@ -432,7 +435,7 @@ class Git:
 # This wraps Apple's security(1) utility
 class Security:
     @staticmethod
-    def exists(request: KeychainRequest) -> bool:
+    def find_internet_password(request: KeychainRequest) -> bool:
         rc = Exec(
             '/usr/bin/security', 'find-internet-password',
             '-a', request.username,
@@ -563,10 +566,10 @@ class Username(Argument):
 
 
 @Subcommand
-def x_keystone_create(host: Host, username: Username, password: RawPassword):
-    """Manually set your keystone password.
+def x_keychain_create(host: Host, username: Username, password: RawPassword):
+    """Manually set your keychain password.
 
-    This is unsafe. The keystone password should only ever be generated for you
+    This is unsafe. The keychain password should only ever be generated for you
     by khef. There is no reason to know its contents."""
     Git.credential_approve(
         KeychainRecord(
@@ -578,10 +581,10 @@ def x_keystone_create(host: Host, username: Username, password: RawPassword):
 
 
 @Subcommand
-def x_keystone_read(host: Host, username: Username):
-    """Print your keystone password.
+def x_keychain_read(host: Host, username: Username):
+    """Print your keychain password.
 
-    This is unsafe. The keystone password should only ever be handled by khef.
+    This is unsafe. The keychain password should only ever be handled by khef.
     There is no reason to know its contents."""
     record = Git.credential_fill(
         KeychainRequest(
@@ -593,8 +596,8 @@ def x_keystone_read(host: Host, username: Username):
 
 
 @Subcommand
-def x_keystone_delete(host: Host, username: Username):
-    """Delete your keystone password.
+def x_keychain_delete(host: Host, username: Username):
+    """Delete your keychain password.
 
     This is unsafe. It will permanently lock you out of khef."""
     Git.credential_reject(
@@ -606,11 +609,12 @@ def x_keystone_delete(host: Host, username: Username):
 
 
 @Subcommand
-def x_keystone_exists(host: Host, username: Username):
-    """Delete your keystone password.
+def x_keychain_exists(host: Host, username: Username):
+    """Check for a password in the macOS login keychain.
 
-    This is unsafe. It will permanently lock you out of khef."""
-    print(Security.exists(
+    This determines whether a password entry exists in the keychain; it will
+    not reveal or alter the contents of that entry."""
+    print(Security.find_internet_password(
         KeychainRequest(
             host=host,
             username=username

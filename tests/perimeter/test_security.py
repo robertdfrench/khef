@@ -11,7 +11,7 @@ def test_credential_does_not_exist():
         username='perimeter-test',
     )
     khef.Git.credential_reject(request)
-    assert not khef.Security.exists(request)
+    assert not khef.Security.find_internet_password(request)
 
 
 def test_credential_exists():
@@ -26,4 +26,4 @@ def test_credential_exists():
         host='khef.invalid',
         username='perimeter-test',
     )
-    assert khef.Security.exists(request)
+    assert khef.Security.find_internet_password(request)
