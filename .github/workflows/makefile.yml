@@ -17,8 +17,14 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Test
+    - name: Unit Tests
       run: make test
 
-    - name: Test Install
-      run: make install check_install
+    - name: End-to-End Tests
+      run: make check
+
+    - name: Install
+      run: make install
+      
+    - name: Check Install
+      run: make installcheck

@@ -20,7 +20,7 @@ venv=. .venv/bin/activate &&
 
 all: help
 
-check_install: #: Validate an installation of khef
+installcheck: #: Validate an installation of khef
 	which khef
 	man -w khef
 
@@ -50,9 +50,11 @@ install: /usr/local/share/man/man1/khef.1 /usr/local/bin/khef #: Install khef on
 lint: .venv/bin/flake8 #: Check code for PEP8 compliance (even if nothing has changed)
 	$(venv) flake8 khef.py
 
+check: .venv/bin/pytest .venv/bin/coverage  #: Run tests (+ lint + typecheck)
+	$(venv) pytest tests/exterior --cov=tests.khef --cov-fail-under=100
+
 test: build/lint build/typecheck .venv/bin/pytest .venv/bin/coverage  #: Run tests (+ lint + typecheck)
 	$(venv) pytest tests/interior tests/perimeter --cov=tests.khef
-	$(venv) pytest tests/exterior --cov=tests.khef --cov-fail-under=100
 
 typecheck: .venv/bin/mypy #: Check for static type errors (even if nothing has changed)
 	$(venv) mypy khef.py
