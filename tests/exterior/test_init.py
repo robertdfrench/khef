@@ -8,6 +8,6 @@ import os
 # Show that running `khef init` creates a config file in the expected place in
 # the user's home directory.
 def test_init_creates_config_dir():
-    khef.main("init")
+    khef.main("init","will.dearborn")
     path = os.path.expanduser("~/.config/nkhef")
     assert os.path.exists(f"{path}/config.json")

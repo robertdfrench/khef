@@ -32,6 +32,7 @@ import abc
 import argparse
 import dataclasses
 import functools
+import json
 import os
 import pathlib
 import subprocess
@@ -504,6 +505,45 @@ class OpenSSL:
         return plaintext.stdout.rstrip()
 
 
+class CiphertextFile(Argument):
+    """An encrypted file"""
+    pass
+
+
+class Host(Argument):
+    """DNS record applicable to the password"""
+    pass
+
+
+class PlaintextFile(Argument):
+    """A (sensitive) file which contains human-readable text"""
+    pass
+
+
+class RawPassword(Argument):
+    """A(n unsafe) password, which may be visible to others on this system"""
+    pass
+
+
+class Username(Argument):
+    """Username associatd with the account"""
+    pass
+
+
+# Initialize a khef config directory
+@Subcommand
+def init(username: Username):
+    """Run this to begin using khef.
+
+    This will create a khef config file in your $XDG_CONFIG_HOME directory.
+    This file is referenced by khef to control most other khef operations."""
+    path = config_home(Environment.get('XDG_CONFIG_HOME')) / 'nkhef'
+    os.makedirs(path, exist_ok=True)
+    config = {"username": username}
+    with open(path / 'config.json', "w") as f:
+        json.dump(config, f)
+
+
 # TODO: Wrap this in print() once we have something else that uses this
 @Subcommand
 def x_git_version():
@@ -519,37 +559,12 @@ def x_openssl_version():
     print(OpenSSL.version())
 
 
-# Initialize a khef config directory
-@Subcommand
-def init():
-    """Run this to begin using khef"""
-    path = config_home(Environment.get('XDG_CONFIG_HOME')) / 'nkhef'
-    os.makedirs(path, exist_ok=True)
-    with open(path / 'config.json', "w") as f:
-        f.write("{}")
-
-
-class PlaintextFile(Argument):
-    """A (sensitive) file which contains human-readable text"""
-    pass
-
-
-class RawPassword(Argument):
-    """A(n unsafe) password, which may be visible to others on this system"""
-    pass
-
-
-class CiphertextFile(Argument):
-    """An encrypted file"""
-    pass
-
-
 @Subcommand
 def x_encrypt_symmetric(
         plaintext_file: PlaintextFile,
         password: RawPassword,
         ciphertext_file: CiphertextFile):
-    """Encrypt a plaintext file using a password provided on the command line.
+    """Encrypt a plaintext file (unsafe).
 
     It is unsafe, and should not be used. Its only use is to test how Exec
     objects are created with file descriptors and input text."""
@@ -565,7 +580,7 @@ def x_decrypt_symmetric(
         ciphertext_file: CiphertextFile,
         password: RawPassword,
         plaintext_file: PlaintextFile):
-    """Decrypt a ciphertext file using a password provided on the command line.
+    """Decrypt a ciphertext file (unsafe).
 
     It is unsafe, and should not be used. Its only use is to test how Exec
     objects are created with file descriptors and input text."""
@@ -585,29 +600,14 @@ def x_list_ciphers():
         print(cipher)
 
 
-class Host(Argument):
-    """DNS record applicable to the password"""
-    pass
-
-
-class Username(Argument):
-    """Username associatd with the account"""
-    pass
-
-
 @Subcommand
 def x_keychain_create(host: Host, username: Username, password: RawPassword):
     """Manually set your keychain password.
 
     This is unsafe. The keychain password should only ever be generated for you
     by khef. There is no reason to know its contents."""
-    Git.credential_approve(
-        KeychainRecord(
-            host=host,
-            username=username,
-            password=password
-        )
-    )
+    record = KeychainRecord(host=host, username=username, password=password)
+    Git.credential_approve(record)
 
 
 @Subcommand
@@ -616,12 +616,8 @@ def x_keychain_read(host: Host, username: Username):
 
     This is unsafe. The keychain password should only ever be handled by khef.
     There is no reason to know its contents."""
-    record = Git.credential_fill(
-        KeychainRequest(
-            host=host,
-            username=username
-        )
-    )
+    request = KeychainRequest(host=host, username=username)
+    record = Git.credential_fill(request)
     print(record.password)
 
 
@@ -630,12 +626,8 @@ def x_keychain_delete(host: Host, username: Username):
     """Delete your keychain password.
 
     This is unsafe. It will permanently lock you out of khef."""
-    Git.credential_reject(
-        KeychainRequest(
-            host=host,
-            username=username
-        )
-    )
+    request = KeychainRequest(host=host, username=username)
+    Git.credential_reject(request)
 
 
 @Subcommand
@@ -644,12 +636,9 @@ def x_keychain_exists(host: Host, username: Username):
 
     This determines whether a password entry exists in the keychain; it will
     not reveal or alter the contents of that entry."""
-    print(Security.find_internet_password(
-        KeychainRequest(
-            host=host,
-            username=username
-        )
-    ))
+    request = KeychainRequest(host=host, username=username)
+    exists = Security.find_internet_password(request)
+    print(exists)
 
 
 @Subcommand
