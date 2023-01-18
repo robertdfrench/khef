@@ -6,8 +6,8 @@ import uuid
 
 
 def test_x_keychain_delete(capsys):
-    khef.main(["x-keychain-delete", "khef.invalid", "exterior-test"])
-    khef.main(["x-keychain-exists", "khef.invalid", "exterior-test"])
+    khef.main("x-keychain-delete", "khef.invalid", "exterior-test")
+    khef.main("x-keychain-exists", "khef.invalid", "exterior-test")
     output = capsys.readouterr().out.rstrip()
     assert output == 'False'
 
@@ -17,10 +17,10 @@ def test_x_keychain_delete(capsys):
 # they may require the use of a '--debug' flag or similar.
 def test_x_keychain_create(capsys):
     keychain_password = str(uuid.uuid4())
-    khef.main(["x-keychain-create", "khef.invalid", "exterior-test", keychain_password])
-    khef.main(["x-keychain-exists", "khef.invalid", "exterior-test"])
+    khef.main("x-keychain-create", "khef.invalid", "exterior-test", keychain_password)
+    khef.main("x-keychain-exists", "khef.invalid", "exterior-test")
     output = capsys.readouterr().out.rstrip()
     assert output == 'True'
-    khef.main(["x-keychain-read", "khef.invalid", "exterior-test"])
+    khef.main("x-keychain-read", "khef.invalid", "exterior-test")
     output = capsys.readouterr().out.rstrip()
     assert output == keychain_password

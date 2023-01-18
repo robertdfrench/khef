@@ -33,6 +33,7 @@ import argparse
 import dataclasses
 import functools
 import os
+import pathlib
 import subprocess
 import sys
 import textwrap
@@ -51,9 +52,18 @@ import typing
 # khef by its parent process -- probably your shell. A caveat here that may
 # seem unusual for some: this list includes *only* the arguments, and does not
 # (as is the case in most other places) begin with the program name.
-def main(argv: typing.List[str]) -> None:
-    Subcommand.dispatch(argv, prog='khef', version='0.1.0',
+def main(*argv: str, **env: str) -> None:
+    Environment.clear()
+    Environment.update(env)
+    Subcommand.dispatch(list(argv), prog='khef', version='0.1.0',
                         description='Share secrets with your Ka-tet')
+
+
+# This is a global dictionary containing the environment variables (which is a
+# global dictionary anyways). Using this internal copy of the environment
+# variables makes it easier to write tests, since we don't need to muck with
+# the environment in framework-specific ways.
+Environment: typing.Dict[str, str] = dict()
 
 
 # This is the class of objects which represent 'subcommands': actions that can
@@ -390,6 +400,16 @@ class Exec:
             return self._run()
 
 
+# This implements the FreeDesktop XDG_CONFIG_HOME spec. Pass the value of the
+# XDG_CONFIG_HOME environment variable (or `None` if undefined) to this
+# function, and it will produce a pathlib.Path option for the correct value of
+# "Config Home".
+def config_home(path: typing.Optional[str]) -> pathlib.Path:
+    if not path:
+        path = "~/.config"
+    return pathlib.Path(os.path.expanduser(path))
+
+
 # This is our wrapper for the git utility.
 class Git:
 
@@ -497,6 +517,16 @@ def x_git_version():
 def x_openssl_version():
     """Print the version of OpenSSL on this host."""
     print(OpenSSL.version())
+
+
+# Initialize a khef config directory
+@Subcommand
+def init():
+    """Run this to begin using khef"""
+    path = config_home(Environment.get('XDG_CONFIG_HOME')) / 'nkhef'
+    os.makedirs(path, exist_ok=True)
+    with open(path / 'config.json', "w") as f:
+        f.write("{}")
 
 
 class PlaintextFile(Argument):
@@ -622,8 +652,16 @@ def x_keychain_exists(host: Host, username: Username):
     ))
 
 
+@Subcommand
+def x_environment_config():
+    """Show where the config directory should be"""
+    config_home = Environment.get('XDG_CONFIG_HOME', "~/.config")
+    config_home = os.path.expanduser(config_home)
+    print(f"{config_home}/nkhef")
+
+
 # Invoke the `main` function (top of this file) with all of the arguments given
 # on the command line. The first item in argv (the program name) is skipped,
 # since this is the convention used by Python's built-in argparse module.
 if __name__ == "__main__":  # pragma: no cover
-    main(sys.argv[1:])
+    main(*sys.argv[1:], **dict(os.environ))
