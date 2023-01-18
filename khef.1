@@ -15,9 +15,25 @@
 .Nm khef
 .Op Fl version
 .
+.Nm
+.Ar init
+.
 .
 .Sh DESCRIPTION
 The
 .Nm
 utility is a stand-alone, easy-to-audit password management solution for small
 teams.
+.
+.Bl -bullet -offset indent -compact
+.It
+.Nm Ar init
+helps you set up khef for the first time.
+.El
+.
+.
+.Sh ENVIRONMENT
+.Nm
+checks for the
+.Ev XDG_CONFIG_HOME
+environment variable to determine the path to its config.json file.
