@@ -505,6 +505,17 @@ class OpenSSL:
         return plaintext.stdout.rstrip()
 
 
+class Curl:
+    @staticmethod
+    def version() -> str:
+        info = str(Exec('/usr/bin/curl', '-V'))
+        return ' '.join(info.split()[0:2])
+
+    @staticmethod
+    def download(source_url: str, dest: pathlib.Path):
+        Exec('/usr/bin/curl', '-o', str(dest), source_url)
+
+
 class CiphertextFile(Argument):
     """An encrypted file"""
     pass
@@ -530,6 +541,11 @@ class Username(Argument):
     pass
 
 
+class URL(Argument):
+    """A raw URL to download"""
+    pass
+
+
 # Initialize a khef config directory
 @Subcommand
 def init(username: Username):
@@ -542,6 +558,15 @@ def init(username: Username):
     config = {"username": username}
     with open(path / 'config.json', "w") as f:
         json.dump(config, f)
+
+
+@Subcommand
+def info():
+    """Show tool version information"""
+    Git.print_version()
+    print(Curl.version())
+    print(OpenSSL.version())
+
 
 
 # TODO: Wrap this in print() once we have something else that uses this
@@ -647,6 +672,12 @@ def x_environment_config():
     config_home = Environment.get('XDG_CONFIG_HOME', "~/.config")
     config_home = os.path.expanduser(config_home)
     print(f"{config_home}/nkhef")
+
+
+@Subcommand
+def x_download(source: URL, dest: PlaintextFile):
+    """Download a file"""
+    Curl.download(source, pathlib.Path(dest))
 
 
 # Invoke the `main` function (top of this file) with all of the arguments given
