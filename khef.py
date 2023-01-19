@@ -675,7 +675,10 @@ def x_environment_config():
 
 @Subcommand
 def x_download(source: URL, dest: PlaintextFile):
-    """Download a file"""
+    """Download a file.
+
+    This uses the system-provided curl command to download the resource at
+    `source` to the provided `dest` path."""
     Curl.download(source, pathlib.Path(dest))
 
 

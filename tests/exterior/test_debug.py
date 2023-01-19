@@ -36,6 +36,12 @@ def test_config_xdg_home(capsys):
     assert output.endswith("/.xdg/nkhef")
 
 
+# This confirms that ChaCha is among the ciphers provided by the system's
+# OpenSSL implementation. We do this not for the sake of testing OpenSSL, but
+# for the sake of testing Exec's ability to double as an iterator (since
+# `openssl list-ciphers` spits out many lines of cipher names).
+#
+# TODO: drop this test when a real subcommand exercises this same capability.
 def test_cipher_algorithms(capsys):
     khef.main("x-list-ciphers")
     output = capsys.readouterr().out
