@@ -568,7 +568,6 @@ def info():
     print(OpenSSL.version())
 
 
-
 # TODO: Wrap this in print() once we have something else that uses this
 @Subcommand
 def x_git_version():
