@@ -5,6 +5,8 @@ from .. import khef
 import uuid
 
 
+# Show that we fail to find a credential after it has been removed from the
+# keychain.
 def test_credential_does_not_exist():
     request = khef.KeychainRequest(
         host='khef.invalid',
@@ -14,6 +16,8 @@ def test_credential_does_not_exist():
     assert not khef.Security.find_internet_password(request)
 
 
+# Show that we do find a credential after it has been inserted into the
+# keychain.
 def test_credential_exists():
     cred = khef.KeychainRecord(
         host='khef.invalid',
